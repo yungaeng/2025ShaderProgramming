@@ -23,7 +23,8 @@ void RenderScene(void)
 	glClearColor(0.0f, 0.3f, 0.3f, 1.0f);
 
 	// Renderer Test
-	g_Renderer->DrawSolidRect(0, 0, 0, 4, 1, 0, 1, 1);
+	//g_Renderer->DrawSolidRect(0, 0, 0, 4, 1, 0, 1, 1);
+	g_Renderer->DrawTest();
 
 	glutSwapBuffers();
 }
@@ -35,17 +36,19 @@ void Idle(void)
 
 void MouseInput(int button, int state, int x, int y)
 {
+	//std::cout << "Mouse : " << button << ", " << state << ", " << x << ", " << y std::endl;
 	RenderScene();
 }
 
 void KeyInput(unsigned char key, int x, int y)
 {
-	//std::cout << "key : " << key << std::endl;
+	//std::cout << "Key : " << key << std::endl;
 	RenderScene();
 }
 
 void SpecialKeyInput(int key, int x, int y)
 {
+	//std::cout << "Special key : " << key << std::endl;
 	RenderScene();
 }
 
