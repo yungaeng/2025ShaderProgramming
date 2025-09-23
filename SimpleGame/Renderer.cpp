@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include "Renderer.h"
+#define pNum 10000
 
 Renderer::Renderer(int windowSizeX, int windowSizeY)
 {
@@ -25,7 +26,33 @@ void Renderer::Initialize(int windowSizeX, int windowSizeY)
 	CreateVertexBufferObjects();
 
 	//Create Particles
-	CreateParticles(10'000);
+	CreateParticles(pNum);
+
+	if (m_SolidRectShader > 0 && m_VBORect > 0)
+	{
+		m_Initialized = true;
+	}
+}
+
+void Renderer::DeleteAllShaderPrograms()
+{
+	glDeleteShader(m_SolidRectShader);
+	glDeleteShader(m_TestShader);
+	glDeleteShader(m_ParticleShader);
+}
+
+void Renderer::CompileAllShaderPrograms()
+{
+	//Load shaders
+	m_SolidRectShader = CompileShaders("./Shaders/SolidRect.vs", "./Shaders/SolidRect.fs");
+	m_TestShader = CompileShaders("./Shaders/test.vs", "./Shaders/test.fs");
+	m_ParticleShader = CompileShaders("./Shaders/particle.vs", "./Shaders/particle.fs");
+
+	//Create VBOs
+	CreateVertexBufferObjects();
+
+	//Create Particles
+	CreateParticles(pNum);
 
 	if (m_SolidRectShader > 0 && m_VBORect > 0)
 	{
@@ -36,6 +63,12 @@ void Renderer::Initialize(int windowSizeX, int windowSizeY)
 bool Renderer::IsInitialized()
 {
 	return m_Initialized;
+}
+
+void Renderer::ReloadAllShaderPrograms()
+{
+	DeleteAllShaderPrograms();
+	CompileAllShaderPrograms();
 }
 
 void Renderer::CreateVertexBufferObjects()
@@ -304,6 +337,8 @@ void Renderer::DrawParticle()
 	int u_TimeLoc = glGetUniformLocation(m_ParticleShader, "u_Time");
 	glUniform1f(u_TimeLoc, m_Time);
 
+	int stride = 12;
+
 	// Pos
 	int aPosLoc = glGetAttribLocation(m_ParticleShader, "a_Position");
 	glEnableVertexAttribArray(aPosLoc);
@@ -311,7 +346,7 @@ void Renderer::DrawParticle()
 	glVertexAttribPointer(aPosLoc,
 		3, GL_FLOAT,
 		GL_FALSE,
-		sizeof(float) * 8,
+		sizeof(float) * stride,
 		0);
 
 	//value
@@ -320,7 +355,7 @@ void Renderer::DrawParticle()
 	glVertexAttribPointer(aValueLoc,
 		1, GL_FLOAT,
 		GL_FALSE,
-		sizeof(float) * 8,
+		sizeof(float) * stride,
 		(GLvoid*)(sizeof(float) * 3));
 
 	// Color
@@ -329,14 +364,34 @@ void Renderer::DrawParticle()
 	glVertexAttribPointer(aColorLoc,
 		4, GL_FLOAT,
 		GL_FALSE,
-		sizeof(float) * 8,
+		sizeof(float) * stride,
 		(GLvoid*)(sizeof(float) * 4));
+
+	//sTime
+	int aTimeLoc = glGetAttribLocation(m_ParticleShader, "a_sTime");
+	glEnableVertexAttribArray(aTimeLoc);
+	glVertexAttribPointer(aTimeLoc,
+		1, GL_FLOAT,
+		GL_FALSE,
+		sizeof(float) * stride,
+		(GLvoid*)(sizeof(float) * 8));
+
+	//Vector
+	int aVelLoc = glGetAttribLocation(m_ParticleShader, "a_Vel");
+	glEnableVertexAttribArray(aVelLoc);
+	glVertexAttribPointer(aVelLoc,
+		3, GL_FLOAT,
+		GL_FALSE,
+		sizeof(float) * stride,
+		(GLvoid*)(sizeof(float) * 9));
 
 	glDrawArrays(GL_TRIANGLES, 0, m_VBOParticlesVertexCount);
 
 	// 안정적으로 Enable 후 Disable.
 	glDisableVertexAttribArray(aPosLoc);
 	glDisableVertexAttribArray(aColorLoc);
+	glDisableVertexAttribArray(aValueLoc);
+	glDisableVertexAttribArray(aTimeLoc);
 
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
@@ -351,7 +406,7 @@ void Renderer::CreateParticles(int count)
 {
 	int particleCounts = count;
 	int verticesCounts = count * 6;
-	int floatCountPerVertex = 3 + 1 + 4;			// x, y, z, value, r, g, b, a
+	int floatCountPerVertex = 3 + 1 + 4 + 1 + 3;			// x, y, z, value, r, g, b, a, sTime, vx, vy, vz
 	int totalfloatCounts = verticesCounts * floatCountPerVertex;
 	int floatCountsPerParticle = floatCountPerVertex * 6;
 
@@ -360,69 +415,105 @@ void Renderer::CreateParticles(int count)
 
 	for (int i = 0; i < particleCounts; i++)
 	{
-		float size = 0.01 * (float)rand() / (float)RAND_MAX;
+		float size = 0.02 * (float)rand() / (float)RAND_MAX;
 		float centerX = (float)rand() / (float)RAND_MAX * 2.f - 1.f;
 		float centerY = (float)rand() / (float)RAND_MAX * 2.f - 1.f;
-		float value = 1 * (float)rand() / (float)RAND_MAX;
+		float value = (float)rand() / (float)RAND_MAX;
+		float r = (float)rand() / (float)RAND_MAX;
+		float g = (float)rand() / (float)RAND_MAX;
+		float b = (float)rand() / (float)RAND_MAX;
+		float a = 1;
+		float sTime = (float)rand() / (float)RAND_MAX *2.f;
+		float vx = (float)rand() / (float)RAND_MAX *2.f - 1.f;
+		float vy = (float)rand() / (float)RAND_MAX * 2.f - 1.f;
+		float vz = 0;
 		int index = i * floatCountsPerParticle;
 
 		temp[index] = centerX - size; index++; // x
 		temp[index] = centerY - size; index++; // y
 		temp[index] = 0; index++;	           // z
 		temp[index] = value; index++;		   // value
-		temp[index] = (float)rand() / (float)RAND_MAX; index++; // r
-		temp[index] = (float)rand() / (float)RAND_MAX; index++; // g
-		temp[index] = (float)rand() / (float)RAND_MAX; index++; // b
-		temp[index] = 1; index++; // a
+		temp[index] = r; index++;			   // r
+		temp[index] = g; index++;			   // g
+		temp[index] = b; index++;			   // b
+		temp[index] = a; index++;			   // a
+		temp[index] = sTime; index++;		   // sTime
+		temp[index] = vx; index++;			   // vx
+		temp[index] = vy; index++;			   // vy
+		temp[index] = vz; index++;			   // vz
 
 		temp[index] = centerX + size; index++;
 		temp[index] = centerY + size; index++;
 		temp[index] = 0; index++;			
 		temp[index] = value; index++;
-		temp[index] = (float)rand() / (float)RAND_MAX; index++;
-		temp[index] = (float)rand() / (float)RAND_MAX; index++;
-		temp[index] = (float)rand() / (float)RAND_MAX; index++;
-		temp[index] = 1; index++; 
+		temp[index] = r; index++;			  
+		temp[index] = g; index++;			   
+		temp[index] = b; index++;			   
+		temp[index] = a; index++;
+		temp[index] = sTime; index++;
+		temp[index] = vx; index++;			   
+		temp[index] = vy; index++;			   
+		temp[index] = vz; index++;			   
 
 		temp[index] = centerX - size; index++;
 		temp[index] = centerY + size; index++;
 		temp[index] = 0; index++;
 		temp[index] = value; index++;
-		temp[index] = (float)rand() / (float)RAND_MAX; index++;
-		temp[index] = (float)rand() / (float)RAND_MAX; index++;
-		temp[index] = (float)rand() / (float)RAND_MAX; index++;
-		temp[index] = 1; index++;
+		temp[index] = r; index++;
+		temp[index] = g; index++;
+		temp[index] = b; index++;
+		temp[index] = a; index++;
+		temp[index] = sTime; index++;
+		temp[index] = vx; index++;
+		temp[index] = vy; index++;
+		temp[index] = vz; index++;
 
 		temp[index] = centerX - size; index++;
 		temp[index] = centerY - size; index++;
 		temp[index] = 0; index++;	
 		temp[index] = value; index++;
-		temp[index] = (float)rand() / (float)RAND_MAX; index++;
-		temp[index] = (float)rand() / (float)RAND_MAX; index++;
-		temp[index] = (float)rand() / (float)RAND_MAX; index++;
-		temp[index] = 1; index++;
+		temp[index] = r; index++;
+		temp[index] = g; index++;
+		temp[index] = b; index++;
+		temp[index] = a; index++;
+		temp[index] = sTime; index++;
+		temp[index] = vx; index++;
+		temp[index] = vy; index++;
+		temp[index] = vz; index++;
 
 		temp[index] = centerX + size; index++;
 		temp[index] = centerY - size; index++;
 		temp[index] = 0; index++;	
 		temp[index] = value; index++;
-		temp[index] = (float)rand() / (float)RAND_MAX; index++;
-		temp[index] = (float)rand() / (float)RAND_MAX; index++;
-		temp[index] = (float)rand() / (float)RAND_MAX; index++;
-		temp[index] = 1; index++;
+		temp[index] = r; index++;
+		temp[index] = g; index++;
+		temp[index] = b; index++;
+		temp[index] = a; index++;
+		temp[index] = sTime; index++;
+		temp[index] = vx; index++;
+		temp[index] = vy; index++;
+		temp[index] = vz; index++;
 
 		temp[index] = centerX + size; index++;
 		temp[index] = centerY + size; index++;
 		temp[index] = 0; index++;
 		temp[index] = value; index++;
-		temp[index] = (float)rand() / (float)RAND_MAX; index++;
-		temp[index] = (float)rand() / (float)RAND_MAX; index++;
-		temp[index] = (float)rand() / (float)RAND_MAX; index++;
-		temp[index] = 1; index++;
+		temp[index] = r; index++;
+		temp[index] = g; index++;
+		temp[index] = b; index++;
+		temp[index] = a; index++;
+		temp[index] = sTime; index++;
+		temp[index] = vx; index++;
+		temp[index] = vy; index++;
+		temp[index] = vz; index++;
 	}
+
+	
 
 	glGenBuffers(1, &m_VBOParticles);
 	glBindBuffer(GL_ARRAY_BUFFER, m_VBOParticles);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(float) * totalfloatCounts, temp, GL_STATIC_DRAW);
 	m_VBOParticlesVertexCount = verticesCounts;
+
+	delete[] temp;
 }
