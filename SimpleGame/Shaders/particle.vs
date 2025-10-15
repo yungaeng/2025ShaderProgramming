@@ -104,6 +104,9 @@ void circleParticle()
 		float tt = t*t;
 		float nTime = t/lifeTime;
 
+		x += t * c_G.x * tt;
+		y += t * c_G.y * tt;
+
 		newPosition.xy += vec2(x, y);
 		newAlpha = 1-t/lifeTime;
 	}

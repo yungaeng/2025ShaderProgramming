@@ -1,6 +1,6 @@
 #include "stdafx.h"
 #include "Renderer.h"
-#define pNum 1000
+#define pNum 10000
 
 Renderer::Renderer(int windowSizeX, int windowSizeY)
 {
@@ -22,6 +22,7 @@ void Renderer::Initialize(int windowSizeX, int windowSizeY)
 	m_TestShader = CompileShaders("./Shaders/test.vs", "./Shaders/test.fs");
 	m_ParticleShader = CompileShaders("./Shaders/particle.vs", "./Shaders/particle.fs");
 	m_GridMeshShader = CompileShaders("./Shaders/GridMesh.vs", "./Shaders/GridMesh.fs");
+	m_FullScreenShader = CompileShaders("./Shaders/Fullscreen.vs", "./Shaders/Fullscreen.fs");
 
 	//Create VBOs
 	CreateVertexBufferObjects();
@@ -31,6 +32,9 @@ void Renderer::Initialize(int windowSizeX, int windowSizeY)
 
 	// create gridmesh
 	CreateGridMesh(100, 100);
+
+	// create full screen
+	CreateFullScreenObjects();
 
 	if (m_SolidRectShader > 0 && m_VBORect > 0)
 	{
@@ -53,6 +57,7 @@ void Renderer::CompileAllShaderPrograms()
 	m_TestShader = CompileShaders("./Shaders/test.vs", "./Shaders/test.fs");
 	m_ParticleShader = CompileShaders("./Shaders/particle.vs", "./Shaders/particle.fs");
 	m_GridMeshShader = CompileShaders("./Shaders/GridMesh.vs", "./Shaders/GridMesh.fs");
+	m_FullScreenShader = CompileShaders("./Shaders/Fullscreen.vs", "./Shaders/Fullscreen.fs");
 
 	//Create VBOs
 	CreateVertexBufferObjects();
@@ -62,6 +67,9 @@ void Renderer::CompileAllShaderPrograms()
 
 	// create gridmesh
 	CreateGridMesh(100, 100);
+
+	// create full screen
+	CreateFullScreenObjects();
 
 	if (m_SolidRectShader > 0 && m_VBORect > 0)
 	{
@@ -710,3 +718,44 @@ void Renderer::DrawGridMesh()
 
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
+
+void Renderer::DrawFullScreenColor(float r, float g, float b, float a)
+{
+	//Program select
+	int shader = m_FullScreenShader;
+	glUseProgram(shader);
+
+	glUniform4f(glGetUniformLocation(shader, "u_Color"), r, g, b, a);
+
+	int attribPosition = glGetAttribLocation(shader, "a_Position");
+	glEnableVertexAttribArray(attribPosition);
+
+	glBindBuffer(GL_ARRAY_BUFFER, m_FullScreenVBO);
+	glVertexAttribPointer(attribPosition, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 3, 0);
+
+	glDrawArrays(GL_TRIANGLES, 0, 6);
+
+	glDisableVertexAttribArray(attribPosition);
+
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+void Renderer::CreateFullScreenObjects()
+{
+	float rect[]
+		=
+	{
+		-1.f, -1.f, 0.f,
+		1.f, -1.f,  0.f,
+		-1.f, 1.f,  0.f,//Triangle1
+
+		-1.f, 1.f, 0.f,
+		1.f, -1.f, 0.f,
+		1.f, 1.f, 0.f //Triangle2
+	};
+
+	glGenBuffers(1, &m_FullScreenVBO);
+	glBindBuffer(GL_ARRAY_BUFFER, m_FullScreenVBO);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(rect), rect, GL_STATIC_DRAW);
+}
+
