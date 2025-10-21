@@ -1,11 +1,16 @@
 #version 330
+#define MAX_POINTS 100
 
 in vec3 a_Position;
 out vec4 v_Color;
 
 uniform float u_Time;
+uniform vec4 u_Points[MAX_POINTS];
 
 const float c_PI = 3.141592;
+const vec4 c_Points[3] = vec4[](vec4(0, 0, 2, 2),
+						  			   vec4(0.5, 0, 3, 3),
+									   vec4(-0.5, 0, 4, 4));
 
 void Flag() 
 {
@@ -35,13 +40,9 @@ void Wave()
 
 	/*
 	if(d<5)
-	{
 		v_Color = vec4(1);
-	}
 	else
-	{
 		v_Color = vec4(0);
-	}
 	*/
 
 	/*
@@ -55,8 +56,43 @@ void Wave()
 	v_Color = vec4(value*p);
 }
 
+void RainDrop()
+{
+	vec4 newPosition = vec4(a_Position, 1);
+	gl_Position = newPosition;
+
+	vec2 pos = newPosition.xy;
+	float newColor = 0;
+	
+	for(int i = 0; i < MAX_POINTS; i++)
+	{
+		vec2 cen = u_Points[i].xy;
+		float d = distance(pos, cen);
+
+		float sTime = u_Points[i].z;
+		float newTime = u_Time - sTime;
+		float lTime = u_Points[i].w;
+
+		if(newTime > 0)
+		{
+			float baseTime = fract(newTime/lTime);
+			float oneMinus = 1-baseTime;
+			float t = baseTime * lTime;
+			
+			float range = baseTime * lTime / 10;
+
+			float value = sin(d * 4 * c_PI * 10 - t * 10);
+			float p = clamp(range - d, 0, 1);
+
+			newColor += value * p * oneMinus * 10;
+		}
+	}	
+	v_Color = vec4(newColor);
+}
+
 void main()
 {
 	//Flag();
-	Wave();
+	//Wave();
+	RainDrop();
 }

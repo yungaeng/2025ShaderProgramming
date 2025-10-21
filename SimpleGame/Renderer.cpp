@@ -1,6 +1,7 @@
 #include "stdafx.h"
 #include "Renderer.h"
 #define pNum 10000
+#define MAX_POINTS 100
 
 Renderer::Renderer(int windowSizeX, int windowSizeY)
 {
@@ -31,10 +32,25 @@ void Renderer::Initialize(int windowSizeX, int windowSizeY)
 	CreateParticles(pNum);
 
 	// create gridmesh
-	CreateGridMesh(100, 100);
+	CreateGridMesh(1000, 1000);
 
 	// create full screen
 	CreateFullScreenObjects();
+
+	//Rain Drop points
+	int index = 0;
+	for (int i = 0; i < MAX_POINTS; i++)
+	{
+		float x = 2 * ((float)rand() / (float)RAND_MAX) - 1;
+		float y = 2 * ((float)rand() / (float)RAND_MAX) - 1;
+		float sTime = (float)rand() / (float)RAND_MAX * 6;
+		float lTime = (float)rand() / (float)RAND_MAX * 0.5;
+		m_Points[index] = x; index++;
+		m_Points[index] = y; index++;
+		m_Points[index] = sTime; index++;
+		m_Points[index] = lTime; index++;
+		std::cout << x << " " << y << sTime << lTime << std::endl;
+	}
 
 	if (m_SolidRectShader > 0 && m_VBORect > 0)
 	{
@@ -52,29 +68,7 @@ void Renderer::DeleteAllShaderPrograms()
 
 void Renderer::CompileAllShaderPrograms()
 {
-	//Load shaders
-	m_SolidRectShader = CompileShaders("./Shaders/SolidRect.vs", "./Shaders/SolidRect.fs");
-	m_TestShader = CompileShaders("./Shaders/test.vs", "./Shaders/test.fs");
-	m_ParticleShader = CompileShaders("./Shaders/particle.vs", "./Shaders/particle.fs");
-	m_GridMeshShader = CompileShaders("./Shaders/GridMesh.vs", "./Shaders/GridMesh.fs");
-	m_FullScreenShader = CompileShaders("./Shaders/Fullscreen.vs", "./Shaders/Fullscreen.fs");
-
-	//Create VBOs
-	CreateVertexBufferObjects();
-
-	//Create Particles
-	CreateParticles(pNum);
-
-	// create gridmesh
-	CreateGridMesh(100, 100);
-
-	// create full screen
-	CreateFullScreenObjects();
-
-	if (m_SolidRectShader > 0 && m_VBORect > 0)
-	{
-		m_Initialized = true;
-	}
+	Initialize(m_WindowSizeX, m_WindowSizeY);
 }
 
 bool Renderer::IsInitialized()
@@ -588,10 +582,10 @@ void Renderer::CreateParticles(int count)
 
 void Renderer::CreateGridMesh(int x, int y)
 {
-	float basePosX = -0.5f;
-	float basePosY = -0.5f;
-	float targetPosX = 0.5f;
-	float targetPosY = 0.5f;
+	float basePosX = -1.f;
+	float basePosY = -1.f;
+	float targetPosX = 1.f;
+	float targetPosY = 1.f;
 	int pointCountX = x;
 	int pointCountY = y;
 
@@ -696,7 +690,7 @@ void Renderer::CreateGridMesh(int x, int y)
 void Renderer::DrawGridMesh()
 {
 	// time ¡ı∞°
-	m_Time += 0.001;
+	m_Time += 0.005;
 
 	//Program select
 	int shader = m_GridMeshShader;
@@ -704,6 +698,10 @@ void Renderer::DrawGridMesh()
 
 	int u_TimeLoc = glGetUniformLocation(shader, "u_Time");
 	glUniform1f(u_TimeLoc, m_Time);
+
+	// Point
+	int u_PointsLoc = glGetUniformLocation(shader, "u_Points");
+	glUniform4fv(u_PointsLoc, MAX_POINTS, m_Points);
 
 	// Pos
 	int attribPosition = glGetAttribLocation(shader, "a_Position");
